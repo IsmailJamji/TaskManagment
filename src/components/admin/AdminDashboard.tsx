@@ -27,7 +27,8 @@ export function AdminDashboard() {
   const handleDownloadReport = async () => {
     try {
       setDownloading(true);
-      const response = await fetch('http://localhost:3001/api/analytics/report', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${apiUrl}/analytics/report`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('taskforge_token') || ''}`
         }
@@ -37,14 +38,14 @@ export function AdminDashboard() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `taskforge-report.csv`;
+      a.download = `TaskForge-Report-${new Date().toISOString().slice(0,10)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      alert('Failed to download report');
+      alert('Failed to download Excel report');
     } finally {
       setDownloading(false);
     }
@@ -119,7 +120,7 @@ export function AdminDashboard() {
           disabled={downloading}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
         >
-          {downloading ? 'Preparing...' : 'Download Report'}
+          {downloading ? 'Preparing Excel Report...' : 'Download Excel Report'}
         </button>
       </div>
 

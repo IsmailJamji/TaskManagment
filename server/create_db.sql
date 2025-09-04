@@ -1,7 +1,7 @@
-﻿CREATE DATABASE taskforge;
-CREATE USER taskforge_user WITH PASSWORD 'taskforge_pass';
-GRANT ALL PRIVILEGES ON DATABASE taskforge TO taskforge_user;
+﻿CREATE DATABASE TaskManager;
+CREATE USER TaskManager_user WITH PASSWORD 'taskmanager_pass';
+GRANT ALL PRIVILEGES ON DATABASE TaskManager TO TaskManager_user;
 -- The following lines require psql:
-\\connect taskforge
-GRANT ALL ON SCHEMA public TO taskforge_user;
-ALTER DATABASE taskforge OWNER TO taskforge_user;
+\\connect TaskManager
+GRANT ALL ON SCHEMA public TO TaskManager_user;
+ALTER DATABASE TaskManager OWNER TO TaskManager_user;

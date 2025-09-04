@@ -2,6 +2,7 @@ import express from 'express';
 import { pool } from '../config/database.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 const router = express.Router();
 
@@ -69,56 +70,149 @@ router.get('/user-dashboard', authenticateToken, async (req: any, res) => {
   }
 });
 
-// Export CSV report of activities (admin only)
+// Export Excel report with organized tables (admin only)
 router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const report = await pool.query(`
+    // Create a new workbook
+    const workbook = XLSX.utils.book_new();
+
+    // 1. TASK OVERVIEW TABLE
+    const taskOverview = await pool.query(`
       SELECT 
-        t.id,
-        t.title,
-        t.status,
-        t.priority,
-        t.due_date,
-        t.created_at,
-        t.updated_at,
-        u1.name as assignee_name,
-        u2.name as assigner_name
+        t.title as "Task Title",
+        t.description as "Description",
+        CASE 
+          WHEN t.status = 'pending' THEN 'Pending'
+          WHEN t.status = 'in_progress' THEN 'In Progress'
+          WHEN t.status = 'completed' THEN 'Completed'
+          ELSE t.status
+        END as "Status",
+        CASE 
+          WHEN t.priority = 'low' THEN 'Low'
+          WHEN t.priority = 'medium' THEN 'Medium'
+          WHEN t.priority = 'high' THEN 'High'
+          ELSE t.priority
+        END as "Priority",
+        u1.name as "Assigned To",
+        u1.department as "Department",
+        u2.name as "Assigned By",
+        t.due_date as "Due Date",
+        t.created_at as "Created Date",
+        t.updated_at as "Last Updated"
       FROM tasks t
       LEFT JOIN users u1 ON t.assignee_id = u1.id
       LEFT JOIN users u2 ON t.assigner_id = u2.id
       ORDER BY t.created_at DESC
     `);
 
-    const headers = [
-      'id','title','status','priority','due_date','created_at','updated_at','assignee_name','assigner_name'
+    const taskSheet = XLSX.utils.json_to_sheet(taskOverview.rows);
+    XLSX.utils.book_append_sheet(workbook, taskSheet, 'Tasks Overview');
+
+    // 2. USER MANAGEMENT TABLE
+    const userOverview = await pool.query(`
+      SELECT 
+        u.name as "Full Name",
+        u.email as "Email Address",
+        u.department as "Department",
+        CASE 
+          WHEN u.role = 'admin' THEN 'Administrator'
+          WHEN u.role = 'user' THEN 'Employee'
+          ELSE u.role
+        END as "Role",
+        CASE 
+          WHEN u.is_active = true THEN 'Active'
+          ELSE 'Inactive'
+        END as "Status",
+        u.created_at as "Join Date",
+        u.last_login as "Last Login"
+      FROM users u
+      ORDER BY u.created_at DESC
+    `);
+
+    const userSheet = XLSX.utils.json_to_sheet(userOverview.rows);
+    XLSX.utils.book_append_sheet(workbook, userSheet, 'Users Management');
+
+    // 3. TASK COMMENTS TABLE
+    const commentsOverview = await pool.query(`
+      SELECT 
+        t.title as "Task Title",
+        u.name as "Commenter",
+        u.department as "Department",
+        c.content as "Comment",
+        c.created_at as "Comment Date"
+      FROM comments c
+      JOIN tasks t ON c.task_id = t.id
+      JOIN users u ON c.user_id = u.id
+      ORDER BY c.created_at DESC
+    `);
+
+    const commentsSheet = XLSX.utils.json_to_sheet(commentsOverview.rows);
+    XLSX.utils.book_append_sheet(workbook, commentsSheet, 'Task Comments');
+
+    // 4. STATISTICS SUMMARY TABLE
+    const taskStats = await pool.query(`
+      SELECT 
+        COUNT(*) as "Total Tasks",
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as "Completed Tasks",
+        COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as "In Progress Tasks",
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as "Pending Tasks",
+        COUNT(CASE WHEN due_date < CURRENT_DATE AND status != 'completed' THEN 1 END) as "Overdue Tasks"
+      FROM tasks
+    `);
+
+    const userStats = await pool.query(`
+      SELECT 
+        COUNT(*) as "Total Users",
+        COUNT(CASE WHEN is_active = true THEN 1 END) as "Active Users",
+        COUNT(CASE WHEN role = 'admin' THEN 1 END) as "Administrators",
+        COUNT(CASE WHEN role = 'user' THEN 1 END) as "Employees"
+      FROM users
+    `);
+
+    const departmentStats = await pool.query(`
+      SELECT 
+        COALESCE(u.department, 'Not Specified') as "Department",
+        COUNT(*) as "Total Users",
+        COUNT(CASE WHEN u.is_active = true THEN 1 END) as "Active Users",
+        COUNT(t.id) as "Total Tasks Assigned"
+      FROM users u
+      LEFT JOIN tasks t ON u.id = t.assignee_id
+      GROUP BY u.department
+      ORDER BY COUNT(*) DESC
+    `);
+
+    // Combine statistics
+    const summaryData = [
+      { "Metric": "Total Tasks", "Value": taskStats.rows[0]["Total Tasks"] },
+      { "Metric": "Completed Tasks", "Value": taskStats.rows[0]["Completed Tasks"] },
+      { "Metric": "In Progress Tasks", "Value": taskStats.rows[0]["In Progress Tasks"] },
+      { "Metric": "Pending Tasks", "Value": taskStats.rows[0]["Pending Tasks"] },
+      { "Metric": "Overdue Tasks", "Value": taskStats.rows[0]["Overdue Tasks"] },
+      { "Metric": "", "Value": "" }, // Empty row
+      { "Metric": "Total Users", "Value": userStats.rows[0]["Total Users"] },
+      { "Metric": "Active Users", "Value": userStats.rows[0]["Active Users"] },
+      { "Metric": "Administrators", "Value": userStats.rows[0]["Administrators"] },
+      { "Metric": "Employees", "Value": userStats.rows[0]["Employees"] }
     ];
 
-    const escapeCsv = (val: any) => {
-      if (val === null || val === undefined) return '';
-      const s = String(val).replace(/"/g, '""');
-      return /[",\n]/.test(s) ? `"${s}"` : s;
-    };
+    const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Statistics Summary');
 
-    const rows = report.rows.map(r => [
-      r.id,
-      r.title,
-      r.status,
-      r.priority,
-      r.due_date ? new Date(r.due_date).toISOString().slice(0,10) : '',
-      r.created_at ? new Date(r.created_at).toISOString() : '',
-      r.updated_at ? new Date(r.updated_at).toISOString() : '',
-      r.assignee_name || '',
-      r.assigner_name || ''
-    ]);
+    // 5. DEPARTMENT BREAKDOWN TABLE
+    const departmentSheet = XLSX.utils.json_to_sheet(departmentStats.rows);
+    XLSX.utils.book_append_sheet(workbook, departmentSheet, 'Department Breakdown');
 
-    const csv = [headers.join(','), ...rows.map(row => row.map(escapeCsv).join(','))].join('\n');
-    const filename = `taskforge-report-${format(new Date(), 'yyyyMMdd-HHmmss')}.csv`;
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    res.send(csv);
+    // Generate Excel file
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    const filename = `TaskForge-Report-${format(new Date(), 'yyyy-MM-dd-HHmmss')}.xlsx`;
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(excelBuffer);
   } catch (error) {
-    console.error('Report generation error:', error);
-    res.status(500).json({ error: 'Failed to generate report' });
+    console.error('Excel report generation error:', error);
+    res.status(500).json({ error: 'Failed to generate Excel report' });
   }
 });
 
