@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { Layout } from './components/Layout';
 import { Navigation } from './components/Navigation';
 import { LoginForm } from './components/LoginForm';
@@ -11,6 +12,7 @@ import { UserDashboard } from './components/user/UserDashboard';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
+  const { language } = useLanguage();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   if (isLoading) {
@@ -43,7 +45,7 @@ function AppContent() {
   };
 
   return (
-    <Layout title="TaskForge">
+    <Layout title="TaskForge" key={language}>
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
       {renderContent()}
     </Layout>
@@ -53,9 +55,11 @@ function AppContent() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </LanguageProvider>
     </Router>
   );
 }

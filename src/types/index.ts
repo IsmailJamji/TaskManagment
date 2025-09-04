@@ -4,6 +4,7 @@ export interface User {
   email: string;
   role: 'admin' | 'user';
   is_active: boolean;
+  department?: string;
   created_at: string;
 }
 

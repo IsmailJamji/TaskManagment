@@ -59,13 +59,7 @@ router.post('/', authenticateToken, requireAdmin, async (req: any, res) => {
       RETURNING *
     `, [title, description, assignee_id, req.user.id, due_date, priority, status]);
 
-    const created = result.rows[0];
-    await pool.query(
-      `INSERT INTO activity_logs (user_id, action, entity, entity_id, metadata)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, 'create', 'task', created.id, { title, assignee_id, due_date, priority, status }]
-    );
-    res.status(201).json(created);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Create task error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -135,13 +129,7 @@ router.put('/:id', authenticateToken, async (req: any, res) => {
     `;
 
     const result = await pool.query(query, params);
-    const updated = result.rows[0];
-    await pool.query(
-      `INSERT INTO activity_logs (user_id, action, entity, entity_id, metadata)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, 'update', 'task', updated.id, req.body]
-    );
-    res.json(updated);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Update task error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -157,11 +145,6 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    await pool.query(
-      `INSERT INTO activity_logs (user_id, action, entity, entity_id)
-       VALUES ($1, $2, $3, $4)`,
-      [req.user.id, 'delete', 'task', req.params.id]
-    );
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Delete task error:', error);

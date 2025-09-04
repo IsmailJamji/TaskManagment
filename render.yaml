@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: taskforge-backend
+    env: node
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskforge-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend-domain.vercel.app
+
+databases:
+  - name: taskforge-db
+    plan: free

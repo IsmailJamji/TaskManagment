@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { User } from '../../types';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { X } from 'lucide-react';
 
 interface UserFormProps {
@@ -15,11 +16,13 @@ export function UserForm({ user, onClose, onSave }: UserFormProps) {
     email: '',
     password: '',
     role: 'user',
-    is_active: true
+    is_active: true,
+    department: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { apiRequest } = useApi();
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (user) {
@@ -28,7 +31,8 @@ export function UserForm({ user, onClose, onSave }: UserFormProps) {
         email: user.email,
         password: '', // Don't show existing password
         role: user.role,
-        is_active: user.is_active
+        is_active: user.is_active,
+        department: user.department || ''
       });
     }
   }, [user]);
@@ -125,33 +129,53 @@ export function UserForm({ user, onClose, onSave }: UserFormProps) {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('user.department')}
+            </label>
+            <select
+              value={formData.department}
+              onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">{t('filter.all')}</option>
+              <option value="IT">{t('dept.it')}</option>
+              <option value="HR">{t('dept.hr')}</option>
+              <option value="Finance">{t('dept.finance')}</option>
+              <option value="Marketing">{t('dept.marketing')}</option>
+              <option value="Sales">{t('dept.sales')}</option>
+              <option value="Operations">{t('dept.operations')}</option>
+              <option value="Other">{t('dept.other')}</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Role
+                {t('user.role')}
               </label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value as 'admin' | 'user' })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
+                <option value="user">{t('user.user')}</option>
+                <option value="admin">{t('user.admin')}</option>
               </select>
             </div>
 
             {user && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
+                  {t('user.status')}
                 </label>
                 <select
                   value={formData.is_active ? 'active' : 'inactive'}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'active' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="active">{t('user.active')}</option>
+                  <option value="inactive">{t('user.inactive')}</option>
                 </select>
               </div>
             )}

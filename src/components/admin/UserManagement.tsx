@@ -2,14 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { User } from '../../types';
 import { UserForm } from './UserForm';
-import { Plus, Edit, UserCheck, UserX, Mail, Shield } from 'lucide-react';
+import { SearchFilter } from '../common/SearchFilter';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { Plus, Edit, UserCheck, UserX, Mail, Shield, Trash2 } from 'lucide-react';
 
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { apiRequest } = useApi();
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadUsers();
@@ -19,11 +23,40 @@ export function UserManagement() {
     try {
       const data = await apiRequest('/users');
       setUsers(data);
+      setFilteredUsers(data);
     } catch (error) {
       console.error('Failed to load users:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = (query: string) => {
+    const filtered = users.filter(user => 
+      user.name.toLowerCase().includes(query.toLowerCase()) ||
+      user.email.toLowerCase().includes(query.toLowerCase()) ||
+      (user.department && user.department.toLowerCase().includes(query.toLowerCase()))
+    );
+    setFilteredUsers(filtered);
+  };
+
+  const handleFilter = (filters: Record<string, string>) => {
+    let filtered = users;
+
+    if (filters.role && filters.role !== 'all') {
+      filtered = filtered.filter(user => user.role === filters.role);
+    }
+
+    if (filters.status && filters.status !== 'all') {
+      const isActive = filters.status === 'active';
+      filtered = filtered.filter(user => user.is_active === isActive);
+    }
+
+    if (filters.department && filters.department !== 'all') {
+      filtered = filtered.filter(user => user.department === filters.department);
+    }
+
+    setFilteredUsers(filtered);
   };
 
   const handleCreateUser = () => {
@@ -51,6 +84,17 @@ export function UserManagement() {
     }
   };
 
+  const handleDeleteUser = async (user: User) => {
+    if (window.confirm(`Delete ${user.name}? This cannot be undone.`)) {
+      try {
+        await apiRequest(`/users/${user.id}`, { method: 'DELETE' });
+        await loadUsers();
+      } catch (error) {
+        console.error('Failed to delete user:', error);
+      }
+    }
+  };
+
   const handleUserSaved = () => {
     setShowForm(false);
     setEditingUser(null);
@@ -65,21 +109,54 @@ export function UserManagement() {
     );
   }
 
+  const departments = Array.from(new Set(users.map(u => u.department).filter(Boolean)));
+  const filterOptions = [
+    {
+      key: 'role',
+      label: t('user.role'),
+      options: [
+        { value: 'admin', label: t('user.admin') },
+        { value: 'user', label: t('user.user') }
+      ]
+    },
+    {
+      key: 'status',
+      label: t('user.status'),
+      options: [
+        { value: 'active', label: t('user.active') },
+        { value: 'inactive', label: t('user.inactive') }
+      ]
+    },
+    {
+      key: 'department',
+      label: t('user.department'),
+      options: departments.map(dept => ({ value: dept!, label: t(`dept.${dept!.toLowerCase()}`) || dept! }))
+    }
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="mt-1 text-sm text-gray-600">Manage team members and their access</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('user.management')}</h1>
+          <p className="mt-1 text-sm text-gray-600">{t('user.management.desc')}</p>
         </div>
         <button
           onClick={handleCreateUser}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add User
+          {t('user.add')}
         </button>
       </div>
+
+      {/* Search and Filter */}
+      <SearchFilter
+        onSearch={handleSearch}
+        onFilter={handleFilter}
+        filterOptions={filterOptions}
+        placeholder={`${t('search.placeholder')} users...`}
+      />
 
       {/* Users Table */}
       <div className="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
@@ -97,6 +174,9 @@ export function UserManagement() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Department
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -105,7 +185,7 @@ export function UserManagement() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -138,11 +218,14 @@ export function UserManagement() {
                       user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
                       {user.is_active ? (
-                        <><UserCheck className="w-3 h-3 mr-1" />Active</>
+                        <><UserCheck className="w-3 h-3 mr-1" />{t('user.active')}</>
                       ) : (
-                        <><UserX className="w-3 h-3 mr-1" />Inactive</>
+                        <><UserX className="w-3 h-3 mr-1" />{t('user.inactive')}</>
                       )}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {user.department ? t(`dept.${user.department.toLowerCase()}`) || user.department : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(user.created_at).toLocaleDateString()}
@@ -164,6 +247,12 @@ export function UserManagement() {
                         }`}
                       >
                         {user.is_active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>

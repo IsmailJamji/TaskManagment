@@ -16,12 +16,12 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'];
+
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.length === 0) return callback(null, true);
-    return allowedOrigins.includes(origin) ? callback(null, true) : callback(new Error('CORS not allowed'));
-  },
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());

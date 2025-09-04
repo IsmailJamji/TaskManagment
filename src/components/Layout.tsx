@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { LogOut, Settings, User } from 'lucide-react';
 
 interface LayoutProps {
@@ -9,6 +10,7 @@ interface LayoutProps {
 
 export function Layout({ children, title = 'TaskForge' }: LayoutProps) {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -36,7 +38,7 @@ export function Layout({ children, title = 'TaskForge' }: LayoutProps) {
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Logout
+                {t('nav.logout')}
               </button>
             </div>
           </div>

@@ -7,13 +7,8 @@ import rateLimit from 'express-rate-limit';
 
 const router = express.Router();
 
-// Rate limiter for login (basic in-memory)
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false
-});
+// No rate limiter in reverted state
+const loginLimiter = (req: any, res: any, next: any) => next();
 
 const loginSchema = Joi.object({
   email: Joi.string().email().required(),

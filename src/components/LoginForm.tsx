@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Eye, EyeOff, Settings } from 'lucide-react';
 
 export function LoginForm() {
@@ -9,6 +10,7 @@ export function LoginForm() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useLanguage();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,15 +33,15 @@ export function LoginForm() {
           <div className="mx-auto w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
             <Settings className="w-8 h-8 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">Welcome to TaskForge</h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to your account</p>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">{t('auth.welcome')}</h2>
+          <p className="mt-2 text-sm text-gray-600">{t('auth.signin')}</p>
         </div>
 
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
+                {t('auth.email')}
               </label>
               <input
                 id="email"
@@ -55,7 +57,7 @@ export function LoginForm() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
+                {t('auth.password')}
               </label>
               <div className="relative">
                 <input
@@ -94,12 +96,12 @@ export function LoginForm() {
             disabled={isLoading}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? t('auth.signing.in') : t('auth.signin.button')}
           </button>
 
           <div className="text-center mt-6">
             <p className="text-xs text-gray-500">
-              Demo: admin@taskforge.com / admin123
+              {t('auth.demo')}
             </p>
           </div>
         </form>

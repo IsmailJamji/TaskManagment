@@ -11,14 +11,15 @@ const userSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
   role: Joi.string().valid('admin', 'user').default('user'),
-  is_active: Joi.boolean().optional()
+  is_active: Joi.boolean().optional(),
+  department: Joi.string().optional()
 });
 
 // Get all users (admin only)
 router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, email, role, is_active, created_at 
+      SELECT id, name, email, role, is_active, department, created_at 
       FROM users 
       ORDER BY created_at DESC
     `);
@@ -37,7 +38,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { name, email, password, role, is_active } = value;
+    const { name, email, password, role, is_active, department } = value;
 
     // Check if user already exists
     const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -48,18 +49,12 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(`
-      INSERT INTO users (name, email, password_hash, role, is_active)
-      VALUES ($1, $2, $3, $4, COALESCE($5, true))
-      RETURNING id, name, email, role, is_active, created_at
-    `, [name, email, hashedPassword, role, is_active]);
+      INSERT INTO users (name, email, password_hash, role, is_active, department)
+      VALUES ($1, $2, $3, $4, COALESCE($5, true), $6)
+      RETURNING id, name, email, role, is_active, department, created_at
+    `, [name, email, hashedPassword, role, is_active, department]);
 
-    const created = result.rows[0];
-    await pool.query(
-      `INSERT INTO activity_logs (user_id, action, entity, entity_id, metadata)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, 'create', 'user', created.id, { name, email, role, is_active }]
-    );
-    res.status(201).json(created);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Create user error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -70,7 +65,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req: any, res) => {
   try {
     const userId = req.params.id;
-    const { name, email, role, is_active } = req.body;
+    const { name, email, role, is_active, department } = req.body;
 
     // Prevent admin from deactivating themselves
     if (req.user.id == userId && is_active === false) {
@@ -97,6 +92,17 @@ router.put('/:id', authenticateToken, requireAdmin, async (req: any, res) => {
       updateFields.push(`is_active = $${paramCount++}`);
       params.push(is_active);
     }
+    if (department !== undefined) {
+      updateFields.push(`department = $${paramCount++}`);
+      params.push(department);
+    }
+
+    // Handle password update if provided
+    if (req.body.password) {
+      const hashed = await bcrypt.hash(req.body.password, 10);
+      updateFields.push(`password_hash = $${paramCount++}`);
+      params.push(hashed);
+    }
 
     params.push(userId);
 
@@ -104,20 +110,14 @@ router.put('/:id', authenticateToken, requireAdmin, async (req: any, res) => {
       UPDATE users 
       SET ${updateFields.join(', ')}
       WHERE id = $${paramCount}
-      RETURNING id, name, email, role, is_active, created_at
+      RETURNING id, name, email, role, is_active, department, created_at
     `, params);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const updated = result.rows[0];
-    await pool.query(
-      `INSERT INTO activity_logs (user_id, action, entity, entity_id, metadata)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [req.user.id, 'update', 'user', updated.id, req.body]
-    );
-    res.json(updated);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -125,3 +125,66 @@ router.put('/:id', authenticateToken, requireAdmin, async (req: any, res) => {
 });
 
 export default router;
+ 
+// Delete user (admin only)
+router.delete('/:id', authenticateToken, requireAdmin, async (req: any, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = parseInt(req.params.id);
+
+    // Prevent admin from deleting themselves
+    if (req.user.id === userId) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    await client.query('BEGIN');
+
+    // Nullify references to this user to avoid FK violations
+    await client.query('UPDATE tasks SET assignee_id = NULL WHERE assignee_id = $1', [userId]);
+    await client.query('UPDATE tasks SET assigner_id = NULL WHERE assigner_id = $1', [userId]);
+    await client.query('UPDATE comments SET user_id = NULL WHERE user_id = $1', [userId]);
+
+    const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING id', [userId]);
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await client.query('COMMIT');
+    return res.json({ message: 'User deleted' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Delete user error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
+// Reset user password (admin only)
+const passwordSchema = Joi.object({ password: Joi.string().min(6).required() });
+
+router.put('/:id/password', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { error, value } = passwordSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const userId = req.params.id;
+    const hashed = await bcrypt.hash(value.password, 10);
+    const result = await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id, name, email, role, is_active, department, created_at',
+      [hashed, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});

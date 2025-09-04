@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
-import { Comment } from '../../types';
-import { MessageCircle, Send } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { MessageCircle, Send, User } from 'lucide-react';
+
+interface Comment {
+  id: number;
+  comment_text: string;
+  user_name: string;
+  created_at: string;
+}
 
 interface TaskCommentsProps {
   taskId: number;
@@ -13,6 +21,8 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { apiRequest } = useApi();
+  const { user } = useAuth();
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadComments();
@@ -29,7 +39,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
     }
   };
 
-  const handleAddComment = async (e: React.FormEvent) => {
+  const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
 
@@ -37,7 +47,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
     try {
       await apiRequest(`/comments/task/${taskId}`, {
         method: 'POST',
-        body: JSON.stringify({ comment_text: newComment })
+        body: JSON.stringify({ comment_text: newComment.trim() })
       });
       setNewComment('');
       await loadComments();
@@ -48,60 +58,76 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center space-x-3 mb-6">
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
         <MessageCircle className="w-5 h-5 text-gray-600" />
-        <h3 className="text-lg font-semibold text-gray-900">Comments</h3>
+        <h3 className="text-lg font-semibold text-gray-900">{t('task.comments')}</h3>
+        <span className="bg-gray-100 text-gray-600 text-sm px-2 py-1 rounded-full">
+          {comments.length}
+        </span>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      {/* Add Comment Form */}
+      <form onSubmit={handleSubmitComment} className="space-y-3">
+        <div>
+          <textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder={t('task.comment.placeholder')}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            disabled={submitting}
+          />
         </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Comments List */}
-          <div className="max-h-60 overflow-y-auto space-y-4">
-            {comments.length > 0 ? (
-              comments.map((comment) => (
-                <div key={comment.id} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-900">{comment.user_name}</span>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={!newComment.trim() || submitting}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Send className="w-4 h-4" />
+            {submitting ? 'Adding...' : t('task.add.comment')}
+          </button>
+        </div>
+      </form>
+
+      {/* Comments List */}
+      <div className="space-y-3">
+        {comments.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <MessageCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p>No comments yet. Be the first to add feedback!</p>
+          </div>
+        ) : (
+          comments.map((comment) => (
+            <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-gray-900">{comment.user_name}</span>
                     <span className="text-xs text-gray-500">
-                      {new Date(comment.created_at).toLocaleDateString()}
+                      {new Date(comment.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-700">{comment.comment_text}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">{comment.comment_text}</p>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-500 italic text-center py-4">No comments yet</p>
-            )}
-          </div>
-
-          {/* Add Comment Form */}
-          <form onSubmit={handleAddComment} className="pt-4 border-t border-gray-200">
-            <div className="flex space-x-3">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="submit"
-                disabled={submitting || !newComment.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Send</span>
-              </button>
+              </div>
             </div>
-          </form>
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
@@ -22,9 +23,25 @@ export async function initDatabase() {
         password_hash VARCHAR(255) NOT NULL,
         role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
         is_active BOOLEAN DEFAULT true,
+        department VARCHAR(100),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Add department column to existing users table if it doesn't exist
+    try {
+      await pool.query(`
+        ALTER TABLE users ADD COLUMN department VARCHAR(100)
+      `);
+      console.log('Added department column to users table');
+    } catch (error: any) {
+      if (error.code === '42701') {
+        // Column already exists, ignore
+        console.log('Department column already exists in users table');
+      } else {
+        throw error;
+      }
+    }
 
     // Create Tasks table
     await pool.query(`
@@ -53,30 +70,31 @@ export async function initDatabase() {
       )
     `);
 
-    // Create Activity Logs table
+    
+
+    // Set proper departments for existing users
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS activity_logs (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id),
-        action VARCHAR(100) NOT NULL,
-        entity VARCHAR(50) NOT NULL,
-        entity_id INTEGER,
-        metadata JSONB,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+      UPDATE users SET department = 'IT' WHERE email = 'admin@taskforge.com'
+    `);
+    
+    await pool.query(`
+      UPDATE users SET department = 'IT' WHERE email = 'admin2@taskforge.com'
+    `);
+    
+    await pool.query(`
+      UPDATE users SET department = 'Operations' WHERE email = 'aaa@taskforge.com'
     `);
 
-    // Create default admin user (password: admin123)
+    // Create default admin user if it doesn't exist (password: admin123)
     const adminExists = await pool.query('SELECT id FROM users WHERE email = $1', ['admin@taskforge.com']);
     
     if (adminExists.rows.length === 0) {
-      const bcrypt = (await import('bcryptjs')).default;
       const hashedPassword = await bcrypt.hash('admin123', 10);
       
       await pool.query(`
-        INSERT INTO users (name, email, password_hash, role) 
-        VALUES ($1, $2, $3, $4)
-      `, ['System Admin', 'admin@taskforge.com', hashedPassword, 'admin']);
+        INSERT INTO users (name, email, password_hash, role, department) 
+        VALUES ($1, $2, $3, $4, $5)
+      `, ['System Admin', 'admin@taskforge.com', hashedPassword, 'admin', 'IT']);
     }
 
     console.log('Database initialized successfully');
