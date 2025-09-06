@@ -86,7 +86,7 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
         t.title as "Task Title",
         t.description as "Description",
         CASE 
-          WHEN t.status = 'not_started' THEN 'Not Started'
+        WHEN t.status = 'not_started' THEN 'Not Started'
           WHEN t.status = 'in_progress' THEN 'In Progress'
           WHEN t.status = 'completed' THEN 'Completed'
           ELSE t.status
