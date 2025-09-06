@@ -99,11 +99,6 @@ export function LoginForm() {
             {isLoading ? t('auth.signing.in') : t('auth.signin.button')}
           </button>
 
-          <div className="text-center mt-6">
-            <p className="text-xs text-gray-500">
-              {t('auth.demo')}
-            </p>
-          </div>
         </form>
       </div>
     </div>
