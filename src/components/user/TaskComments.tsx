@@ -13,9 +13,10 @@ interface Comment {
 
 interface TaskCommentsProps {
   taskId: number;
+  refreshTrigger?: number; // Add refresh trigger prop
 }
 
-export function TaskComments({ taskId }: TaskCommentsProps) {
+export function TaskComments({ taskId, refreshTrigger }: TaskCommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
 
   useEffect(() => {
     loadComments();
-  }, [taskId]);
+  }, [taskId, refreshTrigger]);
 
   const loadComments = async () => {
     try {

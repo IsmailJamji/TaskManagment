@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task } from '../../types';
 import { TaskComments } from './TaskComments';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -12,8 +12,14 @@ interface TaskDetailModalProps {
 
 export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProps) {
   const { t } = useLanguage();
+  const [currentTask, setCurrentTask] = useState<Task | null>(task);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  if (!task) return null;
+  useEffect(() => {
+    setCurrentTask(task);
+  }, [task]);
+
+  if (!currentTask) return null;
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
@@ -51,10 +57,15 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
     }
   };
 
-  const isOverdue = new Date(task.due_date) < new Date() && task.status !== 'completed';
+  const isOverdue = new Date(currentTask.due_date) < new Date() && currentTask.status !== 'completed';
 
-  const handleStatusChange = (newStatus: string) => {
-    onUpdate(task.id, { status: newStatus as any });
+  const handleStatusChange = async (newStatus: string) => {
+    // Update local state immediately for better UX
+    setCurrentTask(prev => prev ? { ...prev, status: newStatus as any } : null);
+    setRefreshTrigger(prev => prev + 1);
+    
+    // Call the parent update function
+    onUpdate(currentTask.id, { status: newStatus as any });
   };
 
   return (
@@ -63,15 +74,15 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{task.title}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{currentTask.title}</h2>
             <div className="flex items-center gap-4">
-              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(task.priority)}`}>
-                {getPriorityIcon(task.priority)}
-                {t(`task.priority.${task.priority}`)}
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getPriorityColor(currentTask.priority)}`}>
+                {getPriorityIcon(currentTask.priority)}
+                {t(`task.priority.${currentTask.priority}`)}
               </div>
-              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(task.status)}`}>
-                {getStatusIcon(task.status)}
-                {t(`task.status.${task.status}`)}
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(currentTask.status)}`}>
+                {getStatusIcon(currentTask.status)}
+                {t(`task.status.${currentTask.status}`)}
               </div>
               {isOverdue && (
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 border border-red-200">
@@ -99,13 +110,13 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-gray-700 whitespace-pre-wrap">
-                    {task.description || 'No description provided.'}
+                    {currentTask.description || 'No description provided.'}
                   </p>
                 </div>
               </div>
 
               {/* Comments Section */}
-              <TaskComments taskId={task.id} />
+              <TaskComments taskId={currentTask.id} refreshTrigger={refreshTrigger} />
             </div>
 
             {/* Sidebar */}
@@ -118,14 +129,14 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
                     <Calendar className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Due Date</p>
-                      <p className={`font-medium ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
-                        {new Date(task.due_date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
+                       <p className={`font-medium ${isOverdue ? 'text-red-600' : 'text-gray-900'}`}>
+                         {new Date(currentTask.due_date).toLocaleDateString('en-US', {
+                           weekday: 'long',
+                           year: 'numeric',
+                           month: 'long',
+                           day: 'numeric'
+                         })}
+                       </p>
                     </div>
                   </div>
 
@@ -133,7 +144,7 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
                     <User className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Assigned To</p>
-                      <p className="font-medium text-gray-900">{task.assignee_name || 'Unassigned'}</p>
+                      <p className="font-medium text-gray-900">{currentTask.assignee_name || 'Unassigned'}</p>
                     </div>
                   </div>
 
@@ -141,7 +152,7 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
                     <User className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Created By</p>
-                      <p className="font-medium text-gray-900">{task.assigner_name || 'System'}</p>
+                      <p className="font-medium text-gray-900">{currentTask.assigner_name || 'System'}</p>
                     </div>
                   </div>
                 </div>
@@ -151,7 +162,7 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
               <div className="bg-white border border-gray-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Update Status</h3>
                 <select
-                  value={task.status}
+                  value={currentTask.status}
                   onChange={(e) => handleStatusChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
@@ -170,13 +181,13 @@ export function TaskDetailModal({ task, onClose, onUpdate }: TaskDetailModalProp
                 <div className="space-y-2">
                   <button
                     onClick={() => {
-                      const newStatus = task.status === 'not_started' ? 'in_progress' : 'completed';
+                      const newStatus = currentTask.status === 'not_started' ? 'in_progress' : 'completed';
                       handleStatusChange(newStatus);
                     }}
                     className="w-full text-left px-3 py-2 text-sm text-blue-700 hover:bg-blue-100 rounded-lg transition-colors"
                   >
-                    {task.status === 'not_started' ? 'Start Task' : 
-                     task.status === 'in_progress' ? 'Mark as Completed' : 'Task Completed'}
+                    {currentTask.status === 'not_started' ? 'Start Task' : 
+                     currentTask.status === 'in_progress' ? 'Mark as Completed' : 'Task Completed'}
                   </button>
                 </div>
               </div>
