@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Task, DashboardStats } from '../../types';
 import { TaskCard } from './TaskCard';
 import { TaskFilter } from './TaskFilter';
+import { TaskDetailModal } from './TaskDetailModal';
 import { ClipboardList, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 
 export function UserDashboard() {
@@ -133,6 +134,15 @@ export function UserDashboard() {
             {tasks.length === 0 ? 'You have no assigned tasks yet' : 'No tasks match your current filter'}
           </p>
         </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={handleTaskUpdate}
+        />
       )}
     </div>
   );

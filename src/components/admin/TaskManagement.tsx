@@ -3,6 +3,7 @@ import { useApi } from '../../hooks/useApi';
 import { Task, User } from '../../types';
 import { TaskForm } from './TaskForm';
 import { SearchFilter } from '../common/SearchFilter';
+import { TaskDetailModal } from '../user/TaskDetailModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Plus, Edit, Trash2, Calendar, User as UserIcon, ClipboardList } from 'lucide-react';
 
@@ -12,6 +13,7 @@ export function TaskManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const { apiRequest } = useApi();
   const { t } = useLanguage();
@@ -89,6 +91,18 @@ export function TaskManagement() {
     setShowForm(false);
     setEditingTask(null);
     loadData();
+  };
+
+  const handleTaskUpdate = async (taskId: number, updates: Partial<Task>) => {
+    try {
+      await apiRequest(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates)
+      });
+      await loadData();
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -170,7 +184,8 @@ export function TaskManagement() {
               {/* Tasks Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTasks.map((task) => (
-          <div key={task.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+          <div key={task.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => setSelectedTask(task)}>
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-semibold text-gray-900 truncate flex-1 mr-2">{task.title}</h3>
               <div className="flex space-x-1">
@@ -234,6 +249,15 @@ export function TaskManagement() {
           users={users}
           onClose={() => setShowForm(false)}
           onSave={handleTaskSaved}
+        />
+      )}
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={handleTaskUpdate}
         />
       )}
     </div>
