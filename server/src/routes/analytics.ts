@@ -170,10 +170,16 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
           WHEN t.due_date = CURRENT_DATE AND t.status != 'completed' THEN 'Due Today'
           WHEN t.due_date > CURRENT_DATE AND t.status != 'completed' THEN 'Upcoming'
           ELSE 'Completed'
-        END as "Timeline Status"
+        END as "Timeline Status",
+        COALESCE(comment_count.comment_count, 0) as "Comment Count"
       FROM tasks t
       LEFT JOIN users u1 ON t.assignee_id = u1.id
       LEFT JOIN users u2 ON t.assigner_id = u2.id
+      LEFT JOIN (
+        SELECT task_id, COUNT(*) as comment_count
+        FROM comments
+        GROUP BY task_id
+      ) comment_count ON t.id = comment_count.task_id
       ORDER BY t.created_at DESC
     `);
     console.log(`Found ${taskOverview.rows.length} tasks`);
@@ -185,7 +191,7 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
     const headers = [
       'Task ID', 'Task Title', 'Description', 'Status', 'Priority',
       'Assigned To', 'Assignee Email', 'Assignee Department', 'Assigned By', 'Assigner Email',
-      'Due Date', 'Created Date', 'Last Updated', 'Timeline Status'
+      'Due Date', 'Created Date', 'Last Updated', 'Timeline Status', 'Comment Count'
     ];
     taskSheet.addRow(headers);
     
@@ -205,7 +211,8 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
         row['Due Date'],
         row['Created Date'],
         row['Last Updated'],
-        row['Timeline Status']
+        row['Timeline Status'],
+        row['Comment Count']
       ]);
     });
     
@@ -224,7 +231,8 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
       { width: 12 }, // Due Date
       { width: 18 }, // Created Date
       { width: 18 }, // Last Updated
-      { width: 15 }  // Timeline Status
+      { width: 15 }, // Timeline Status
+      { width: 12 }  // Comment Count
     ];
     
     // Style header row
@@ -387,6 +395,14 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
       FROM users
     `);
 
+    const commentStats = await pool.query(`
+      SELECT 
+        COUNT(*) as "Total Comments",
+        COUNT(DISTINCT task_id) as "Tasks with Comments",
+        COUNT(DISTINCT user_id) as "Users who Commented"
+      FROM comments
+    `);
+
     // Create Statistics sheet with ExcelJS
     const summarySheet = workbook.addWorksheet('Statistics Summary');
     
@@ -404,6 +420,10 @@ router.get('/report', authenticateToken, requireAdmin, async (req, res) => {
     summarySheet.addRow(['Active Users', userStats.rows[0]["Active Users"]]);
     summarySheet.addRow(['Administrators', userStats.rows[0]["Administrators"]]);
     summarySheet.addRow(['Employees', userStats.rows[0]["Employees"]]);
+    summarySheet.addRow(['', '']); // Empty row
+    summarySheet.addRow(['Total Comments', commentStats.rows[0]["Total Comments"]]);
+    summarySheet.addRow(['Tasks with Comments', commentStats.rows[0]["Tasks with Comments"]]);
+    summarySheet.addRow(['Users who Commented', commentStats.rows[0]["Users who Commented"]]);
     
     // Set column widths
     summarySheet.columns = [
