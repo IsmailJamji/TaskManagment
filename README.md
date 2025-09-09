@@ -27,8 +27,8 @@ A modern, full-stack task management application with user management, real-time
 
 ## 🔑 Default Login
 
-- **Email**: `admin@taskforge.com`
-- **Password**: `admin123`
+- **Email**: 
+- **Password**: 
 
 ## 🛠️ Local Development
 
