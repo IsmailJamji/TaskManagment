@@ -27,6 +27,9 @@ export function AdminDashboard() {
   const handleDownloadReport = async () => {
     try {
       setDownloading(true);
+
+
+
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
       const response = await fetch(`${apiUrl}/analytics/report`, {
         headers: {
@@ -38,7 +41,7 @@ export function AdminDashboard() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `TaskForge-Report-${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.download = `IT-Centrale-Report-${new Date().toISOString().slice(0,10)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();

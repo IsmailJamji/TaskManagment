@@ -8,7 +8,7 @@ interface LayoutProps {
   title?: string;
 }
 
-export function Layout({ children, title = 'TaskForge' }: LayoutProps) {
+export function Layout({ children, title = 'IT Centrale' }: LayoutProps) {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
 

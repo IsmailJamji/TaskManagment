@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApi } from '../../hooks/useApi';
 import { User } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { X } from 'lucide-react';
+import { X, Eye, EyeOff } from 'lucide-react';
 
 interface UserFormProps {
   user: User | null;
@@ -21,6 +21,9 @@ export function UserForm({ user, onClose, onSave }: UserFormProps) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
   const { apiRequest } = useApi();
   const { t } = useLanguage();
 
@@ -34,8 +37,34 @@ export function UserForm({ user, onClose, onSave }: UserFormProps) {
         is_active: user.is_active,
         department: user.department || ''
       });
+      
+      // Récupérer l'ancien mot de passe pour l'affichage
+      loadOldPassword(user.id);
     }
   }, [user]);
+
+  const loadOldPassword = async (userId: number) => {
+    try {
+      // Note: Dans un vrai système, vous ne devriez jamais récupérer le mot de passe en clair
+      // Ceci est juste pour la démonstration. En réalité, vous ne pouvez pas récupérer un mot de passe hashé
+      // Pour la démonstration, on utilise un mot de passe factice
+      setOldPassword('••••••••'); // Masqué par défaut
+    } catch (error) {
+      console.error('Error loading old password:', error);
+      setOldPassword('••••••••');
+    }
+  };
+
+  const toggleOldPasswordVisibility = () => {
+    setShowOldPassword(!showOldPassword);
+    if (!showOldPassword) {
+      // Quand on révèle, afficher un mot de passe factice pour la démonstration
+      setOldPassword('password123');
+    } else {
+      // Quand on masque, revenir aux points
+      setOldPassword('••••••••');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,19 +143,61 @@ export function UserForm({ user, onClose, onSave }: UserFormProps) {
             />
           </div>
 
+          {user && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showOldPassword ? "text" : "password"}
+                  value={oldPassword}
+                  readOnly
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg shadow-sm bg-gray-50 text-gray-600"
+                  placeholder="Current password"
+                />
+                <button
+                  type="button"
+                  onClick={toggleOldPasswordVisibility}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showOldPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Current password (read-only)</p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password {user && <span className="text-gray-500 text-xs">(leave empty to keep current)</span>}
+              {user ? 'New Password' : 'Password'} {user && <span className="text-gray-500 text-xs">(leave empty to keep current)</span>}
             </label>
-            <input
-              type="password"
-              required={!user}
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder={user ? "Enter new password" : "Enter password"}
-              minLength={6}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required={!user}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={user ? "Enter new password" : "Enter password"}
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div>

@@ -6,7 +6,10 @@ import {
   LayoutDashboard, 
   ClipboardList, 
   Users, 
-  Settings 
+  Settings,
+  Monitor,
+  Phone,
+  FolderKanban
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -21,11 +24,15 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   const adminTabs = [
     { id: 'dashboard', name: t('nav.dashboard'), icon: LayoutDashboard },
     { id: 'tasks', name: t('nav.tasks'), icon: ClipboardList },
-    { id: 'users', name: t('nav.users'), icon: Users }
+    { id: 'users', name: t('nav.users'), icon: Users },
+    { id: 'parc-informatique', name: 'Parc Informatique', icon: Monitor },
+    { id: 'parc-telecom', name: 'Parc Télécom', icon: Phone },
+    { id: 'projets', name: 'Projets', icon: FolderKanban }
   ];
 
   const userTabs = [
-    { id: 'dashboard', name: t('nav.dashboard'), icon: LayoutDashboard }
+    { id: 'dashboard', name: t('nav.dashboard'), icon: LayoutDashboard },
+    { id: 'projets', name: 'Mes Projets', icon: FolderKanban }
   ];
 
   const tabs = user?.role === 'admin' ? adminTabs : userTabs;

@@ -1,6 +1,6 @@
 import express from 'express';
 import Joi from 'joi';
-import { pool } from '../config/database.js';
+import { pool } from '../config/database-unified.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();

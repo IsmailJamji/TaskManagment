@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import Joi from 'joi';
-import { pool } from '../config/database.js';
+import { pool } from '../config/database-unified.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();

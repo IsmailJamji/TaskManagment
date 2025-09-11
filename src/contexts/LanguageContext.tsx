@@ -10,8 +10,8 @@ interface LanguageContextType {
 
 const translations = {
   en: {
-    'app.title': 'TaskForge',
-    'auth.welcome': 'Welcome to TaskForge',
+    'app.title': 'IT Centrale',
+    'auth.welcome': 'Welcome to IT Centrale',
     'auth.signin': 'Sign in to your account',
     'auth.email': 'Email Address',
     'auth.password': 'Password',
@@ -75,8 +75,8 @@ const translations = {
     'dept.other': 'Other'
   },
   fr: {
-    'app.title': 'TaskForge',
-    'auth.welcome': 'Bienvenue sur TaskForge',
+    'app.title': 'IT Centrale',
+    'auth.welcome': 'Bienvenue sur IT Centrale',
     'auth.signin': 'Connectez-vous à votre compte',
     'auth.email': 'Adresse e-mail',
     'auth.password': 'Mot de passe',

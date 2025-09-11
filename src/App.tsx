@@ -8,7 +8,12 @@ import { LoginForm } from './components/LoginForm';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { TaskManagement } from './components/admin/TaskManagement';
 import { UserManagement } from './components/admin/UserManagement';
+import { ParcInformatiqueManagement } from './components/admin/ParcInformatiqueManagement';
+import { ParcInformatiqueManagementSimple } from './components/admin/ParcInformatiqueManagementSimple';
+import { ParcTelecomManagement } from './components/admin/ParcTelecomManagement';
+import { ProjetManagement } from './components/admin/ProjetManagement';
 import { UserDashboard } from './components/user/UserDashboard';
+import { UserProjets } from './components/user/UserProjets';
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -36,16 +41,29 @@ function AppContent() {
           return <TaskManagement />;
         case 'users':
           return <UserManagement />;
+        case 'parc-informatique':
+          return <ParcInformatiqueManagementSimple />;
+        case 'parc-telecom':
+          return <ParcTelecomManagement />;
+        case 'projets':
+          return <ProjetManagement />;
         default:
           return <AdminDashboard />;
       }
     } else {
-      return <UserDashboard />;
+      switch (activeTab) {
+        case 'dashboard':
+          return <UserDashboard />;
+        case 'projets':
+          return <UserProjets />;
+        default:
+          return <UserDashboard />;
+      }
     }
   };
 
   return (
-    <Layout title="TaskForge" key={language}>
+    <Layout title="IT Centrale" key={language}>
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
       {renderContent()}
     </Layout>

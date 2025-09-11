@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Joi from 'joi';
-import { pool } from '../config/database.js';
+import { pool } from '../config/database-unified.js';
 import rateLimit from 'express-rate-limit';
 
 const router = express.Router();

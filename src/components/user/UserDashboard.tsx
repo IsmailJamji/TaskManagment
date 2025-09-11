@@ -5,7 +5,8 @@ import { Task, DashboardStats } from '../../types';
 import { TaskCard } from './TaskCard';
 import { TaskFilter } from './TaskFilter';
 import { TaskDetailModal } from './TaskDetailModal';
-import { ClipboardList, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { TaskCreateForm } from './TaskCreateForm';
+import { ClipboardList, CheckCircle, Clock, AlertTriangle, Plus } from 'lucide-react';
 
 export function UserDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -13,6 +14,7 @@ export function UserDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { user } = useAuth();
   const { apiRequest } = useApi();
 
@@ -45,6 +47,22 @@ export function UserDashboard() {
       await loadData();
     } catch (error) {
       console.error('Failed to update task:', error);
+    }
+  };
+
+  const handleCreateTask = async (taskData: Partial<Task>) => {
+    try {
+      await apiRequest('/tasks', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...taskData,
+          assignee_id: user?.id
+        })
+      });
+      await loadData();
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error('Failed to create task:', error);
     }
   };
 
@@ -89,9 +107,18 @@ export function UserDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user?.name}!</h1>
-        <p className="mt-1 text-sm text-gray-600">Here are your assigned tasks</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user?.name}!</h1>
+          <p className="mt-1 text-sm text-gray-600">Here are your assigned tasks</p>
+        </div>
+        <button
+          onClick={() => setShowCreateForm(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Nouvelle tâche</span>
+        </button>
       </div>
 
       {/* Statistics Cards */}
@@ -142,6 +169,14 @@ export function UserDashboard() {
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           onUpdate={handleTaskUpdate}
+        />
+      )}
+
+      {/* Task Create Form */}
+      {showCreateForm && (
+        <TaskCreateForm
+          onClose={() => setShowCreateForm(false)}
+          onSubmit={handleCreateTask}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 import express from 'express';
 import Joi from 'joi';
-import { pool } from '../config/database.js';
+import { pool } from '../config/database-unified.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -43,8 +43,8 @@ router.get('/', authenticateToken, async (req: any, res) => {
   }
 });
 
-// Create task (admin only)
-router.post('/', authenticateToken, requireAdmin, async (req: any, res) => {
+// Create task (admin can assign to anyone, users can create for themselves)
+router.post('/', authenticateToken, async (req: any, res) => {
   try {
     const { error, value } = taskSchema.validate(req.body);
     if (error) {
@@ -52,6 +52,11 @@ router.post('/', authenticateToken, requireAdmin, async (req: any, res) => {
     }
 
     const { title, description, assignee_id, due_date, priority, status } = value;
+
+    // Users can only create tasks for themselves unless they are admin
+    if (req.user.role !== 'admin' && assignee_id !== req.user.id) {
+      return res.status(403).json({ error: 'You can only create tasks for yourself' });
+    }
 
     const result = await pool.query(`
       INSERT INTO tasks (title, description, assignee_id, assigner_id, due_date, priority, status)

@@ -4,7 +4,7 @@ export function useApi() {
   const { token, logout } = useAuth();
 
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    const base = import.meta.env.VITE_API_URL || '/api';
     const url = `${base}${endpoint}`;
     
     const response = await fetch(url, {
